@@ -1,5 +1,6 @@
 #%%
 import math
+from matplotlib import pyplot as plt
 
 from pyXSteam.XSteam import XSteam
 
@@ -33,9 +34,10 @@ def calculate_node(
     hydraulic_diameter,
     pipe_diameter,
     surface_temp,
-    bulk_fluid_temp,
     inlet_temp,
-    tube_pressure
+    tube_pressure,
+    condenser_pressure,
+    node_length
 ) -> tuple:
     
     steam_table = XSteam(XSteam.UNIT_SYSTEM_MKS)
@@ -44,7 +46,7 @@ def calculate_node(
     dynamic_viscosity=steam_table.my_pt(tube_pressure, inlet_temp)
     specific_heat=steam_table.Cp_pt(tube_pressure, inlet_temp)
     thermal_conductivity=steam_table.tc_pt(tube_pressure, inlet_temp)
-    enthalpy = steam_table.h_pt(tube_pressure, inlet_temp)
+    surface_temp=steam_table.tsat_p(condenser_pressure)
 
     cross_section = math.pi * pipe_diameter ** 2 / 4
 
@@ -78,9 +80,9 @@ def calculate_node(
     flux = heat_flux(
         heat_transfer_coefficient=heat_transfer_coeff,
         surface_temp=surface_temp,
-        bulk_fluid_temp=bulk_fluid_temp,
+        bulk_fluid_temp=inlet_temp,
         hydraulic_diameter=hydraulic_diameter,
-        pipe_length=pipe_length
+        pipe_length=node_length
     )
 
     outlet= outlet_temp(
@@ -90,10 +92,43 @@ def calculate_node(
         inlet_temp=inlet_temp
     )
 
+    print(
+        f"Outlet temp: {outlet:.2f}\n"
+        f"Flux: {flux:.2f}\n"
+        f"Heat Transfer Coefficient: {heat_transfer_coeff:.2f}"
+    )
+
     return outlet
 # %%
+
+def calculate_pipe_outlet_temp(
+    n_nodes,
+    pipe_length,
+    mass_flow,
+    pipe_diameter,
+    hydraulic_diameter,
+    surface_temp,
+    inlet_temp,
+    tube_pressure,
+    condenser_pressure
+) -> float:
+    node_length = pipe_length / n_nodes
+    for i in range(n_nodes):
+        print(f"Output for Node {i + 1}")
+        inlet_temp = calculate_node(
+            mass_flow=mass_flow,
+            hydraulic_diameter=hydraulic_diameter,
+            pipe_diameter=pipe_diameter,
+            surface_temp=surface_temp,
+            inlet_temp=inlet_temp,
+            tube_pressure=tube_pressure,
+            condenser_pressure=condenser_pressure,
+            node_length=node_length
+        )
+    return inlet_temp
+
+
 n_pipes = 1000
-pipe_length = 1 #meters
 pipe_diameter = 0.01587 #meters
 init_fluid_temp = 15 #Celsius
 init_pressure = 4 #bar
@@ -101,17 +136,46 @@ mass_flow = 0.5 #kg/s per tube
 surface_temp = 344.79 #Celsius
 hydraulic_diameter = 0.01587 #meters
 bulk_fluid_temp=15
+condenser_pressure=0.474
 
+n_nodes = 100
+length=8
 
-node_1 = calculate_node(
+t_out = calculate_pipe_outlet_temp(
+    n_nodes = n_nodes,
+    pipe_length=length,
     mass_flow=mass_flow,
-    hydraulic_diameter=hydraulic_diameter,
     pipe_diameter=pipe_diameter,
+    hydraulic_diameter=hydraulic_diameter,
     surface_temp=surface_temp,
-    bulk_fluid_temp=bulk_fluid_temp,
     inlet_temp=init_fluid_temp,
-    tube_pressure=init_pressure
-
+    tube_pressure=init_pressure,
+    condenser_pressure=condenser_pressure
 )
 
-print(f"Node 1 outlet temp: {node_1:.2f}")
+print(f"Pipe outlet temperature is {t_out:.2f} Celsius with {n_nodes} nodes with length {length/n_nodes}")
+
+n_nodes = list(range(1, 100, 10))
+outlet_temps = [
+    calculate_pipe_outlet_temp(
+        n_nodes = n,
+        pipe_length=length,
+        mass_flow=mass_flow,
+        pipe_diameter=pipe_diameter,
+        hydraulic_diameter=hydraulic_diameter,
+        surface_temp=surface_temp,
+        inlet_temp=init_fluid_temp,
+        tube_pressure=init_pressure,
+        condenser_pressure=condenser_pressure
+    )
+    for n in n_nodes
+]
+
+ax = plt.axes()
+ax.plot(n_nodes, outlet_temps)
+ax.set_title("Pipe Outlet Temperature")
+ax.set_xlabel("Number of nodes")
+ax.set_ylabel("Outlet Temperature (Celsius)")
+ax.hlines(outlet_temps[-1] - 0.2, xmin=0, xmax=n_nodes[-1], color="red", linestyles="dashed")
+ax.text(n_nodes[-5], outlet_temps[-1] + 2, f"Outlet Temp: {outlet_temps[-1]:.2f}C")
+plt.show()
