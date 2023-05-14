@@ -174,7 +174,7 @@ outlet_temps = [
 ax = plt.axes()
 ax.plot(n_nodes, outlet_temps)
 ax.set_title("Pipe Outlet Temperature")
-ax.set_xlabel("Number of nodes")
+ax.set_xlabel("Number of Nodes")
 ax.set_ylabel("Outlet Temperature (Celsius)")
 ax.hlines(outlet_temps[-1] - 0.2, xmin=0, xmax=n_nodes[-1], color="red", linestyles="dashed")
 ax.text(n_nodes[-5], outlet_temps[-1] + 2, f"Outlet Temp: {outlet_temps[-1]:.2f}C")
