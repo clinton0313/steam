@@ -1,11 +1,8 @@
-#%%
 import math
-from matplotlib import pyplot as plt
 
+from matplotlib import pyplot as plt
 from pyXSteam.XSteam import XSteam
 
-steam_table = XSteam(XSteam.UNIT_SYSTEM_MKS)
-#%%
 
 def average_velocity(mass_flow, density, cross_section) -> float:
     return mass_flow / (cross_section * density)
@@ -92,14 +89,7 @@ def calculate_node(
         inlet_temp=inlet_temp
     )
 
-    print(
-        f"Outlet temp: {outlet:.2f}\n"
-        f"Flux: {flux:.2f}\n"
-        f"Heat Transfer Coefficient: {heat_transfer_coeff:.2f}"
-    )
-
     return outlet
-# %%
 
 def calculate_pipe_outlet_temp(
     n_nodes,
@@ -112,9 +102,13 @@ def calculate_pipe_outlet_temp(
     tube_pressure,
     condenser_pressure
 ) -> float:
+    """Calculates pipe outlet temperature by 
+    splitting up the pipe into n_nodes and calculating each
+    node's outlet temperature based on previous
+    node's outlet temperature. 
+    """
     node_length = pipe_length / n_nodes
-    for i in range(n_nodes):
-        print(f"Output for Node {i + 1}")
+    for _ in range(n_nodes):
         inlet_temp = calculate_node(
             mass_flow=mass_flow,
             hydraulic_diameter=hydraulic_diameter,
@@ -127,35 +121,19 @@ def calculate_pipe_outlet_temp(
         )
     return inlet_temp
 
+# PROBLEM 1
 
-n_pipes = 1000
 pipe_diameter = 0.01587 #meters
 init_fluid_temp = 15 #Celsius
 init_pressure = 4 #bar
 mass_flow = 0.5 #kg/s per tube
 surface_temp = 344.79 #Celsius
 hydraulic_diameter = 0.01587 #meters
-bulk_fluid_temp=15
-condenser_pressure=0.474
-
-n_nodes = 100
+condenser_pressure=0.474 #bar
 length=8
 
-t_out = calculate_pipe_outlet_temp(
-    n_nodes = n_nodes,
-    pipe_length=length,
-    mass_flow=mass_flow,
-    pipe_diameter=pipe_diameter,
-    hydraulic_diameter=hydraulic_diameter,
-    surface_temp=surface_temp,
-    inlet_temp=init_fluid_temp,
-    tube_pressure=init_pressure,
-    condenser_pressure=condenser_pressure
-)
-
-print(f"Pipe outlet temperature is {t_out:.2f} Celsius with {n_nodes} nodes with length {length/n_nodes}")
-
-n_nodes = list(range(1, 100, 10))
+#Calculate pipe outlet temperature for increasing number of nodes
+n_nodes = list(range(1, 100))
 outlet_temps = [
     calculate_pipe_outlet_temp(
         n_nodes = n,
@@ -171,11 +149,17 @@ outlet_temps = [
     for n in n_nodes
 ]
 
-ax = plt.axes()
+print(f"Pipe outlet temperature is {outlet_temps[-1]:.2f} Celsius with {n_nodes[-1]} nodes with length {length/n_nodes[-1]:.4f}m")
+
+#Plotting to see convergence
+
+fig, ax = plt.subplots(figsize=(8, 8))
 ax.plot(n_nodes, outlet_temps)
-ax.set_title("Pipe Outlet Temperature")
+ax.set_title("Pipe Outlet Temperature Simulation")
 ax.set_xlabel("Number of Nodes")
-ax.set_ylabel("Outlet Temperature (Celsius)")
-ax.hlines(outlet_temps[-1] - 0.2, xmin=0, xmax=n_nodes[-1], color="red", linestyles="dashed")
-ax.text(n_nodes[-5], outlet_temps[-1] + 2, f"Outlet Temp: {outlet_temps[-1]:.2f}C")
-plt.show()
+ax.set_ylabel("Temperature (Celsius)")
+ax.axhline(outlet_temps[-1] - 0.2, xmin=0, xmax=n_nodes[-1], color="red", linestyle="dashed")
+ax.spines['top'].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.text(n_nodes[-5], outlet_temps[-1] + 2, f"Pipe outlet temp -> {outlet_temps[-1]:.2f}C")
+fig.savefig("problem_1.png")
